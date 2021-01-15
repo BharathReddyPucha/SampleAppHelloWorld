@@ -11,14 +11,17 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Sample.Domain.Abstract.Repositories;
 using Sample.Infrastructure.Repositories;
+using SimpleInjector;
 
 namespace Sample.API
 {
     public class Startup
     {
+        private Container container = new SimpleInjector.Container();
         public Startup(IConfiguration configuration)
         {
             Configuration = configuration;
+            container.Options.ResolveUnregisteredConcreteTypes = false;
         }
 
         public IConfiguration Configuration { get; }
@@ -27,12 +30,25 @@ namespace Sample.API
         {
             services.AddCors();
             services.AddControllers();
-            services.AddSingleton<IHelloWorldRepository, HelloWorldDAL>();
+            services.AddSimpleInjector(container, options =>
+            {
+
+                options.AddAspNetCore()
+                 .AddControllerActivation();
+            });
+
+            InitializeContainer();
+        }
+
+        private void InitializeContainer()
+        {
+            container.Register<IHelloWorldRepository, HelloWorldDAL>(Lifestyle.Singleton);
         }
 
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
+            app.UseSimpleInjector(container);
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
@@ -55,6 +71,8 @@ namespace Sample.API
             {
                 endpoints.MapControllers();
             });
+
+            container.Verify();
         }
     }
 }
